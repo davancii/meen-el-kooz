@@ -1,0 +1,3219 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f0c29">
+  <title>Meen El Kooz - من القزّ 🎭</title>
+
+  <!-- Google Fonts: Tajawal (Arabic) + Poppins (Numbers & English) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Socket.io served by backend -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Face API for client-side face & expression detection -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       CSS Variables & Reset
+       ========================================================================== */
+    :root {
+      --bg-gradient: radial-gradient(ellipse at top, #302b63 0%, #0f0c29 60%, #151128 100%);
+      --gold: #FFD700;
+      --gold-glow: rgba(255, 215, 0, 0.45);
+      --gold-dark: #cc9a00;
+      --coral: #FF6B6B;
+      --coral-glow: rgba(255, 107, 107, 0.5);
+      --green: #4ade80;
+      --green-glow: rgba(74, 222, 128, 0.4);
+      --purple: #9d4edd;
+      --blue: #38bdf8;
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --glass-hover: rgba(255, 255, 255, 0.13);
+      --glass-blur: blur(14px);
+      --text-main: #f8fafc;
+      --text-muted: rgba(248, 250, 252, 0.72);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-full: 9999px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: #0f0c29;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      direction: rtl;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .num-font {
+      font-family: 'Poppins', sans-serif;
+    }
+
+    /* Background Stars & Sparkles */
+    .stars-canvas-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .star-elem {
+      position: absolute;
+      color: var(--gold);
+      opacity: 0.35;
+      font-size: 14px;
+      animation: twinkle 3.2s infinite ease-in-out;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(0.85) rotate(0deg); }
+      50% { opacity: 0.85; transform: scale(1.25) rotate(15deg); filter: drop-shadow(0 0 6px var(--gold)); }
+    }
+
+    /* Screen shake / Flash animations */
+    .shake {
+      animation: screen-shake 0.5s ease-in-out;
+    }
+
+    @keyframes screen-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px) rotate(-1deg); }
+      40%, 80% { transform: translateX(8px) rotate(1deg); }
+    }
+
+    .flash-red-effect {
+      animation: flash-red-anim 0.7s ease-out;
+    }
+
+    @keyframes flash-red-anim {
+      0% { box-shadow: inset 0 0 100px var(--coral-glow); }
+      100% { box-shadow: inset 0 0 0 rgba(0,0,0,0); }
+    }
+
+    /* ==========================================================================
+       Layout & App Container
+       ========================================================================== */
+    #app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)) 16px;
+    }
+
+    .screen {
+      display: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      flex-direction: column;
+      width: 100%;
+      flex: 1;
+    }
+
+    .screen.active {
+      display: flex;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Glass Panels */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ==========================================================================
+       Buttons & Inputs
+       ========================================================================== */
+    .btn {
+      min-height: 50px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Tajawal', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 22px;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      text-decoration: none;
+      width: 100%;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+      color: #121024;
+      box-shadow: 0 6px 20px var(--gold-glow);
+    }
+
+    .btn-gold:hover:not(:disabled) {
+      box-shadow: 0 8px 26px rgba(255, 215, 0, 0.65);
+    }
+
+    .btn-coral {
+      background: linear-gradient(135deg, #FF6B6B 0%, #ee5253 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px var(--coral-glow);
+    }
+
+    .btn-green {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: #0b2914;
+      box-shadow: 0 6px 20px var(--green-glow);
+    }
+
+    .btn-glass {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: #ffffff;
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-glass:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .btn-sm {
+      min-height: 38px;
+      padding: 6px 14px;
+      font-size: 14px;
+      border-radius: var(--radius-sm);
+      width: auto;
+    }
+
+    .input-field {
+      width: 100%;
+      height: 52px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      color: #ffffff;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 17px;
+      padding: 0 16px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: var(--gold);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.25);
+    }
+
+    .input-field::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* ==========================================================================
+       Toast Notifications
+       ========================================================================== */
+    #toast-container {
+      position: fixed;
+      top: calc(12px + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      width: 90%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: rgba(18, 14, 40, 0.94);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: toast-in 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      pointer-events: auto;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+
+    .toast.toast-danger {
+      border-color: var(--coral);
+      box-shadow: 0 8px 24px var(--coral-glow);
+    }
+
+    .toast.toast-success {
+      border-color: var(--green);
+      box-shadow: 0 8px 24px var(--green-glow);
+    }
+
+    .toast.toast-gold {
+      border-color: var(--gold);
+      box-shadow: 0 8px 24px var(--gold-glow);
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-20px) scale(0.92); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ==========================================================================
+       Screen 1: Home Screen
+       ========================================================================== */
+    .home-hero {
+      text-align: center;
+      padding: 24px 0 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .home-logo-icon {
+      font-size: 58px;
+      margin-bottom: 8px;
+      display: inline-block;
+      animation: float-icon 3s ease-in-out infinite;
+    }
+
+    @keyframes float-icon {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-8px) rotate(4deg); }
+    }
+
+    .home-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #FFF6BD 0%, #FFD700 50%, #FFA500 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .home-subtitle {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .home-subtitle span.stars-dec {
+      color: var(--gold);
+      font-size: 20px;
+    }
+
+    .rules-card {
+      background: rgba(255, 215, 0, 0.08);
+      border: 1px dashed rgba(255, 215, 0, 0.35);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .rules-card p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #fef08a;
+      font-weight: 600;
+    }
+
+    .home-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .how-it-works-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .how-it-works-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .how-it-works-item span.item-icon {
+      font-size: 20px;
+      line-height: 1;
+      padding-top: 2px;
+    }
+
+    /* ==========================================================================
+       Screen 2: Setup Screen (Name & Avatar & Join Code)
+       ========================================================================== */
+    .screen-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-top: 6px;
+    }
+
+    .screen-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Tajawal', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-back:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .mode-tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-md);
+      padding: 4px;
+      margin-bottom: 20px;
+      border: 1px solid var(--glass-border);
+    }
+
+    .mode-tab {
+      flex: 1;
+      min-height: 44px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: 'Tajawal', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .mode-tab.active {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 215, 0, 0.12) 100%);
+      color: var(--gold);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .code-input-field {
+      font-family: 'Poppins', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      text-align: center;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* Avatar Picker Grid */
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .avatar-option {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1.5px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .avatar-option:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: scale(1.05);
+    }
+
+    .avatar-option.selected {
+      border-color: var(--gold);
+      background: rgba(255, 215, 0, 0.2);
+      box-shadow: 0 0 16px var(--gold-glow);
+      transform: scale(1.1);
+    }
+
+    /* ==========================================================================
+       Screen 3: Lobby Screen
+       ========================================================================== */
+    .room-code-box {
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(157, 78, 221, 0.12) 100%);
+      border: 1.5px solid rgba(255, 215, 0, 0.35);
+      border-radius: var(--radius-lg);
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .room-code-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .room-code-digits {
+      font-family: 'Poppins', sans-serif;
+      font-size: 44px;
+      font-weight: 900;
+      letter-spacing: 10px;
+      color: var(--gold);
+      text-shadow: 0 0 20px var(--gold-glow);
+      margin-bottom: 8px;
+    }
+
+    .room-code-share-hint {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .lobby-players-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .lobby-players-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .lobby-players-count {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .players-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      animation: slide-in-right 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    @keyframes slide-in-right {
+      from { opacity: 0; transform: translateX(25px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .player-row-avatar {
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    .player-row-info {
+      flex: 1;
+    }
+
+    .player-row-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-chip {
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-host {
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      color: var(--gold);
+    }
+
+    .badge-me {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: var(--blue);
+    }
+
+    .lobby-waiting-state {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ==========================================================================
+       Screen 4: Camera Permission Screen
+       ========================================================================== */
+    .camera-setup-wrap {
+      text-align: center;
+    }
+
+    .camera-preview-box {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      aspect-ratio: 4 / 3;
+      margin: 0 auto 18px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: #000;
+      border: 2px solid var(--glass-border);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .camera-preview-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror */
+    }
+
+    .camera-preview-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .camera-status-pill {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 12, 41, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--glass-border);
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .meter-container {
+      margin-bottom: 20px;
+      text-align: right;
+    }
+
+    .meter-label-wrap {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .meter-bar-track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .meter-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4ade80, #facc15, #f87171);
+      border-radius: var(--radius-full);
+      transition: width 0.2s ease;
+    }
+
+    /* ==========================================================================
+       Screen 5: Game Screen
+       ========================================================================== */
+    .game-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .game-round-pill {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    .game-code-pill {
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Performer Banner */
+    .performer-banner {
+      padding: 16px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      margin-bottom: 14px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .performer-banner.is-me {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.25) 100%);
+      border: 1.5px solid var(--gold);
+      box-shadow: 0 8px 24px var(--gold-glow);
+    }
+
+    .performer-banner.is-other {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+    }
+
+    .performer-badge-title {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .performer-badge-title.gold-text {
+      color: var(--gold);
+      text-shadow: 0 0 16px var(--gold-glow);
+    }
+
+    .performer-subtext {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Challenge Card */
+    .challenge-card {
+      background: linear-gradient(135deg, rgba(157, 78, 221, 0.18) 0%, rgba(56, 189, 248, 0.12) 100%);
+      border: 1px solid rgba(157, 78, 221, 0.35);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
+    .challenge-card-header {
+      font-size: 12px;
+      font-weight: 800;
+      color: #c084fc;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+    }
+
+    .challenge-card-text {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.5;
+    }
+
+    /* Circular Timer */
+    .timer-wrap {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 4px auto 14px;
+    }
+
+    .timer-svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .timer-circle-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 8;
+    }
+
+    .timer-circle-progress {
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.9s linear, stroke 0.3s;
+    }
+
+    .timer-circle-progress.urgent {
+      stroke: var(--coral);
+      animation: pulse-urgent 0.8s infinite alternate;
+    }
+
+    @keyframes pulse-urgent {
+      0% { filter: drop-shadow(0 0 4px var(--coral)); }
+      100% { filter: drop-shadow(0 0 16px var(--coral)); }
+    }
+
+    .timer-inner-content {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-digits {
+      font-family: 'Poppins', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      color: #ffffff;
+    }
+
+    .timer-digits.urgent {
+      color: var(--coral);
+      text-shadow: 0 0 14px var(--coral-glow);
+    }
+
+    .timer-sec-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Players Grid */
+    .players-game-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 80px; /* space for PIP camera */
+    }
+
+    .player-game-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1.5px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .player-game-card.is-performer {
+      border-color: rgba(255, 215, 0, 0.5);
+      background: rgba(255, 215, 0, 0.08);
+    }
+
+    .player-game-card.is-smiling {
+      border-color: #facc15;
+      box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+    }
+
+    .player-game-card.is-laughing {
+      border-color: var(--coral);
+      box-shadow: 0 0 18px var(--coral-glow);
+      animation: gentle-shake 0.4s ease-in-out infinite alternate;
+    }
+
+    @keyframes gentle-shake {
+      from { transform: rotate(-1deg); }
+      to { transform: rotate(1deg); }
+    }
+
+    .player-game-card.has-laughed {
+      opacity: 0.65;
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .player-game-avatar {
+      font-size: 34px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .player-game-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-game-score {
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--gold);
+      background: rgba(255, 215, 0, 0.15);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      margin-bottom: 8px;
+    }
+
+    .status-indicator-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      margin-bottom: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .status-safe {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    .status-smiling {
+      background: rgba(250, 204, 21, 0.15);
+      color: #facc15;
+      border: 1px solid rgba(250, 204, 21, 0.3);
+    }
+
+    .status-laughing {
+      background: rgba(255, 107, 107, 0.2);
+      color: var(--coral);
+      border: 1px solid rgba(255, 107, 107, 0.4);
+      animation: pulse-badge 0.6s infinite alternate;
+    }
+
+    @keyframes pulse-badge {
+      from { transform: scale(0.95); }
+      to { transform: scale(1.05); }
+    }
+
+    .status-lost {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .btn-flag-laugh {
+      width: 100%;
+      min-height: 36px;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Corner Floating PIP Camera */
+    .pip-container {
+      position: fixed;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      left: 16px;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pip-frame {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #000;
+      border: 3px solid var(--green);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+      transition: border-color 0.25s;
+    }
+
+    .pip-frame.is-smiling {
+      border-color: #facc15;
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.6);
+    }
+
+    .pip-frame.is-laughing {
+      border-color: var(--coral);
+      box-shadow: 0 0 20px var(--coral-glow);
+    }
+
+    .pip-frame.is-lost {
+      border-color: #f97316;
+      border-style: dashed;
+    }
+
+    .pip-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .pip-badge {
+      background: rgba(15, 12, 41, 0.9);
+      border: 1px solid var(--glass-border);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 800;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ==========================================================================
+       Screen 6: Vote Banner Modal / Overlay
+       ========================================================================== */
+    .overlay-vote {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(15, 12, 41, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      animation: modal-fade 0.25s ease-out;
+    }
+
+    @keyframes modal-fade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .vote-card {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(28, 20, 52, 0.95);
+      border: 2px solid var(--coral);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 12px 48px var(--coral-glow);
+      animation: vote-scale-up 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+
+    @keyframes vote-scale-up {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .vote-alarm-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--coral);
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 14px;
+      animation: pulse-urgent 0.8s infinite alternate;
+    }
+
+    .vote-target-box {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .vote-target-name {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .vote-reason-text {
+      font-size: 14px;
+      color: #fca5a5;
+    }
+
+    .vote-timer-bar-wrap {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .vote-timer-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: var(--coral);
+      transition: width 0.9s linear;
+    }
+
+    .vote-timer-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .vote-buttons-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .vote-buttons-row .btn {
+      flex: 1;
+    }
+
+    .vote-accused-msg {
+      background: rgba(255, 215, 0, 0.15);
+      border: 1px solid rgba(255, 215, 0, 0.4);
+      color: var(--gold);
+      padding: 14px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* ==========================================================================
+       Screen 7: Round End Screen
+       ========================================================================== */
+    .round-end-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .round-end-title {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    .recap-box {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .recap-performer-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .recap-laughers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .laugher-chip {
+      background: rgba(255, 107, 107, 0.15);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .laugher-penalty {
+      color: var(--coral);
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+    }
+
+    .performer-gain {
+      color: var(--green);
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+    }
+
+    .scoreboard-table {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+    }
+
+    .score-row-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .score-row-points {
+      font-family: 'Poppins', sans-serif;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--gold);
+    }
+
+    /* ==========================================================================
+       Screen 8: Game Over Screen & Dare Wheel
+       ========================================================================== */
+    .gameover-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .gameover-title {
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--gold);
+      text-shadow: 0 0 20px var(--gold-glow);
+    }
+
+    .winner-highlight-card {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 165, 0, 0.18) 100%);
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      text-align: center;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 30px var(--gold-glow);
+    }
+
+    .winner-crown {
+      font-size: 44px;
+      line-height: 1;
+      margin-bottom: 4px;
+      display: inline-block;
+      animation: float-icon 2.5s ease-in-out infinite;
+    }
+
+    .winner-name {
+      font-size: 22px;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 2px;
+    }
+
+    .winner-score {
+      font-family: 'Poppins', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    /* Kooz Penalty Section */
+    .kooz-section {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.18) 0%, rgba(157, 78, 221, 0.2) 100%);
+      border: 2px solid var(--coral);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 36px var(--coral-glow);
+    }
+
+    .kooz-badge-title {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--coral);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .kooz-name-callout {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 14px;
+    }
+
+    /* Canvas Wheel */
+    .wheel-wrap {
+      position: relative;
+      width: 250px;
+      height: 250px;
+      margin: 0 auto 16px;
+    }
+
+    .wheel-canvas {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+      transition: transform 0.05s linear;
+    }
+
+    .wheel-pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 22px solid var(--gold);
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+      z-index: 10;
+    }
+
+    .dare-result-box {
+      background: rgba(15, 12, 41, 0.9);
+      border: 1.5px solid var(--gold);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 14px;
+      box-shadow: 0 6px 20px var(--gold-glow);
+      animation: modal-fade 0.3s ease-out;
+    }
+
+    .dare-result-label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--gold);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .dare-result-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.5;
+    }
+
+    /* Confetti Canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9998;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fullscreen Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Background Animated Stars -->
+  <div class="stars-canvas-bg" aria-hidden="true" id="stars-bg"></div>
+
+  <!-- Toast Notification Stack -->
+  <div id="toast-container"></div>
+
+  <!-- Main Application Wrapper -->
+  <div id="app">
+
+    <!-- ======================================================================
+         SCREEN 1: HOME SCREEN
+         ====================================================================== -->
+    <section id="screen-home" class="screen active">
+      <div class="home-hero">
+        <div class="home-logo-icon">🎭</div>
+        <h1 class="home-title">Meen El Kooz</h1>
+        <div class="home-subtitle">
+          <span class="stars-dec">✦</span>
+          <span>من القزّ؟</span>
+          <span class="stars-dec">★</span>
+        </div>
+      </div>
+
+      <div class="rules-card">
+        <p>من يضحك يخسر نقطة! 📉<br>من يضحّك يكسب نقطة! 📈<br>والأخسر في النهاية هو... القزّ! 🤡</p>
+      </div>
+
+      <div class="home-actions">
+        <button class="btn btn-gold" id="btn-home-create" onclick="openSetup('create')">
+          <span>🏠</span>
+          <span>إنشاء غرفة جديدة</span>
+        </button>
+        <button class="btn btn-glass" id="btn-home-join" onclick="openSetup('join')">
+          <span>🔗</span>
+          <span>انضمام إلى غرفة</span>
+        </button>
+      </div>
+
+      <div class="glass-card">
+        <h3 style="font-size: 15px; font-weight: 800; margin-bottom: 12px; color: var(--gold);">كيف نلعب؟ 📜</h3>
+        <div class="how-it-works-list">
+          <div class="how-it-works-item">
+            <span class="item-icon">📱</span>
+            <span>كل لاعب يفتح اللعبة على جواله الخاص في نفس الغرفة.</span>
+          </div>
+          <div class="how-it-works-item">
+            <span class="item-icon">🎭</span>
+            <span>كل جولة في لاعب مؤدي ينفّذ تحدي كوميدي ليضحّك الباقين.</span>
+          </div>
+          <div class="how-it-works-item">
+            <span class="item-icon">📸</span>
+            <span>الكاميرا ترصد تعابيرك بدقة لكشف أي ابتسامة أو ضحكة تلقائياً!</span>
+          </div>
+          <div class="how-it-works-item">
+            <span class="item-icon">🚨</span>
+            <span>لو حد ضحك أو غطى وجهه، صوّتوا فوراً لتأكيد الخسارة!</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SCREEN 2: SETUP SCREEN (Name & Avatar Picker)
+         ====================================================================== -->
+    <section id="screen-setup" class="screen">
+      <div class="screen-header">
+        <button class="btn-back" onclick="showScreen('screen-home')">
+          <span>➔</span>
+          <span>رجوع</span>
+        </button>
+        <h2 class="screen-title" id="setup-title">إعداد اللاعب</h2>
+        <div style="width: 48px;"></div>
+      </div>
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-create" onclick="switchSetupMode('create')">إنشاء غرفة 🏠</button>
+        <button class="mode-tab" id="tab-join" onclick="switchSetupMode('join')">انضمام لغرفة 🔗</button>
+      </div>
+
+      <div class="glass-card">
+        <!-- Room Code Input (shown only in join mode) -->
+        <div class="form-group" id="group-room-code" style="display: none;">
+          <label class="form-label" for="input-room-code">كود الغرفة (4 أحرف):</label>
+          <input type="text" id="input-room-code" class="input-field code-input-field" maxlength="4" placeholder="ABCD" autocomplete="off" autocorrect="off" autocapitalize="characters">
+        </div>
+
+        <!-- Name Input -->
+        <div class="form-group">
+          <label class="form-label" for="input-player-name">اسمك في اللعبة:</label>
+          <input type="text" id="input-player-name" class="input-field" maxlength="15" placeholder="أدخل اسمك أو لقبك..." autocomplete="name">
+        </div>
+
+        <!-- Avatar Picker Grid -->
+        <div class="form-group">
+          <label class="form-label">اختر شخصيتك الكرتونية:</label>
+          <div class="avatar-grid" id="avatar-grid">
+            <!-- Populated via JS with 15 avatars -->
+          </div>
+        </div>
+
+        <button class="btn btn-gold" id="btn-setup-continue" onclick="submitSetup()">
+          <span>متابعة</span>
+          <span>➔</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SCREEN 3: LOBBY SCREEN
+         ====================================================================== -->
+    <section id="screen-lobby" class="screen">
+      <div class="screen-header">
+        <h2 class="screen-title">غرفة الانتظار</h2>
+        <button class="btn btn-sm btn-glass" onclick="exitToHome()">خروج 🚪</button>
+      </div>
+
+      <!-- Room Code Display -->
+      <div class="room-code-box">
+        <div class="room-code-label">كود الغرفة</div>
+        <div class="room-code-digits" id="lobby-room-code">----</div>
+        <div class="room-code-share-hint">شارك هذا الكود مع أصحابك في نفس الغرفة!</div>
+        <button class="btn btn-sm btn-glass" onclick="copyRoomCode()">
+          <span>📋</span>
+          <span>نسخ الكود</span>
+        </button>
+      </div>
+
+      <!-- Players List -->
+      <div class="glass-card">
+        <div class="lobby-players-header">
+          <span class="lobby-players-title">اللاعبون المتصلون</span>
+          <span class="lobby-players-count" id="lobby-player-count">0/4 لاعبين</span>
+        </div>
+
+        <div class="players-list" id="lobby-players-list">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Host action vs Client waiting -->
+        <div id="lobby-host-controls" style="display: none;">
+          <button class="btn btn-gold" id="btn-start-game" onclick="startGame()">
+            <span>🎮</span>
+            <span>ابدأ اللعبة</span>
+          </button>
+          <p id="lobby-host-hint" style="font-size: 13px; color: var(--text-muted); text-align: center; margin-top: 8px;">
+            تحتاج لاعبين اثنين على الأقل لبدء اللعبة.
+          </p>
+        </div>
+
+        <div id="lobby-client-waiting" class="lobby-waiting-state" style="display: none;">
+          <div class="spinner"></div>
+          <span>بانتظار الهوست لبدء اللعبة...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SCREEN 4: CAMERA PERMISSION & SETUP SCREEN
+         ====================================================================== -->
+    <section id="screen-camera" class="screen">
+      <div class="screen-header">
+        <h2 class="screen-title">فحص الكاميرا 📸</h2>
+      </div>
+
+      <div class="glass-card camera-setup-wrap">
+        <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+          الكاميرا تراقب وجهك للكشف عن الضحك تلقائياً! تأكد من وضوح إضاءة وجهك.
+        </p>
+
+        <!-- Video Box -->
+        <div class="camera-preview-box">
+          <video id="camera-preview-video" class="camera-preview-video" autoplay playsinline muted></video>
+          <canvas id="camera-preview-canvas" class="camera-preview-canvas"></canvas>
+          <div class="camera-status-pill" id="camera-preview-pill">
+            <span>🔍</span>
+            <span id="camera-preview-pill-text">جاري فحص الوجه...</span>
+          </div>
+        </div>
+
+        <!-- Smile / Expression Meter -->
+        <div class="meter-container">
+          <div class="meter-label-wrap">
+            <span>مستوى الابتسام / الضحك:</span>
+            <span id="meter-percent" class="num-font">0%</span>
+          </div>
+          <div class="meter-bar-track">
+            <div id="meter-fill" class="meter-bar-fill"></div>
+          </div>
+        </div>
+
+        <div id="camera-error-banner" style="display: none; background: rgba(255,107,107,0.15); border: 1px solid var(--coral); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px; font-size: 14px; color: #fca5a5;">
+          تعذر الوصول إلى الكاميرا. يمكنك المتابعة بدون كاميرا (التصويت اليدوي فقط).
+        </div>
+
+        <button class="btn btn-green" id="btn-camera-ready" onclick="onCameraReadyClicked()">
+          <span>جاهز! ادخل اللعبة 🚀</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SCREEN 5: GAME SCREEN
+         ====================================================================== -->
+    <section id="screen-game" class="screen">
+      <!-- Top info bar -->
+      <div class="game-top-bar">
+        <span class="game-round-pill" id="game-round-pill">الجولة 1 من 4</span>
+        <span class="game-code-pill" id="game-code-pill">غرفة: ----</span>
+      </div>
+
+      <!-- Who's performing banner -->
+      <div id="performer-banner" class="performer-banner is-other">
+        <div class="performer-badge-title" id="performer-banner-title">
+          <span>🎭</span>
+          <span id="performer-banner-name">المؤدي</span>
+        </div>
+        <div class="performer-subtext" id="performer-banner-subtext">حاول تمسك نفسك وما تضحك!</div>
+      </div>
+
+      <!-- Challenge Card -->
+      <div class="challenge-card">
+        <div class="challenge-card-header">تحدي الجولة الحالية 📜</div>
+        <div class="challenge-card-text" id="challenge-card-text">جاري تحميل التحدي...</div>
+      </div>
+
+      <!-- Circular Countdown Timer -->
+      <div class="timer-wrap">
+        <svg class="timer-svg" viewBox="0 0 100 100">
+          <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
+          <circle id="timer-progress" class="timer-circle-progress" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <div class="timer-inner-content">
+          <span id="timer-seconds" class="timer-digits">30</span>
+          <span class="timer-sec-label">ثانية</span>
+        </div>
+      </div>
+
+      <!-- Players Grid -->
+      <div class="players-game-grid" id="players-game-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- Corner Floating PIP Camera (stays docked during game) -->
+    <div id="pip-container" class="pip-container" style="display: none;">
+      <div class="pip-frame" id="pip-frame">
+        <video id="pip-video" class="pip-video" autoplay playsinline muted></video>
+      </div>
+      <div class="pip-badge" id="pip-badge">
+        <span id="pip-badge-icon">🟢</span>
+        <span id="pip-badge-text">صامد</span>
+        <span id="pip-badge-percent" class="num-font">0%</span>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SCREEN 6: VOTE BANNER MODAL (Overlay)
+         ====================================================================== -->
+    <div id="overlay-vote" class="overlay-vote" style="display: none;">
+      <div class="vote-card">
+        <div class="vote-alarm-header">
+          <span>⚠️</span>
+          <span>ضحك مشتبه به!</span>
+        </div>
+
+        <div class="vote-target-box">
+          <div class="vote-target-name" id="vote-target-name">اسم اللاعب</div>
+          <div class="vote-reason-text" id="vote-reason-text">الذكاء الاصطناعي رصد ضحكة!</div>
+        </div>
+
+        <div class="vote-timer-bar-wrap">
+          <div id="vote-timer-bar-fill" class="vote-timer-bar-fill"></div>
+        </div>
+        <div class="vote-timer-text" id="vote-timer-text">متبقي: 5 ثوانٍ</div>
+
+        <!-- Action Buttons for voters -->
+        <div class="vote-buttons-row" id="vote-buttons-row">
+          <button class="btn btn-coral" id="btn-vote-confirm" onclick="castVote(true)">
+            <span>✅</span>
+            <span>أيوه ضحك!</span>
+          </button>
+          <button class="btn btn-glass" id="btn-vote-dismiss" onclick="castVote(false)">
+            <span>❌</span>
+            <span>ما ضحك!</span>
+          </button>
+        </div>
+
+        <!-- Target message (if you're the accused) -->
+        <div id="vote-accused-msg" class="vote-accused-msg" style="display: none;">
+          🤔 أنت المتهم! انتظر قرار المجموعة.
+        </div>
+
+        <!-- Already voted message -->
+        <div id="vote-voted-msg" style="display: none; margin-top: 12px; font-size: 14px; color: var(--gold); font-weight: 700;">
+          ⏳ تم تسجيل تصويتك، بانتظار باقي اللاعبين...
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         SCREEN 7: ROUND END SCREEN
+         ====================================================================== -->
+    <section id="screen-round-end" class="screen">
+      <div class="round-end-header">
+        <h2 class="round-end-title">نهاية الجولة! 🏁</h2>
+        <p style="font-size: 15px; color: var(--text-muted);" id="round-end-summary-text">نتائج الصمود في هذه الجولة</p>
+      </div>
+
+      <!-- Recap Box -->
+      <div class="recap-box">
+        <div class="recap-performer-title" id="recap-performer-title">المؤدي كسب نقاطاً!</div>
+        <div class="recap-laughers-list" id="recap-laughers-list">
+          <!-- Laughers rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Updated Scoreboard -->
+      <div class="glass-card">
+        <h3 style="font-size: 16px; font-weight: 800; color: var(--gold); margin-bottom: 12px;">لوحة الصدارة الحالية 🏆</h3>
+        <div class="scoreboard-table" id="round-end-scoreboard">
+          <!-- Scores rendered dynamically -->
+        </div>
+
+        <!-- Host next round button -->
+        <div id="round-end-host-ctrl" style="display: none;">
+          <button class="btn btn-gold" id="btn-next-round" onclick="advanceNextRound()">
+            <span>الجولة التالية ⏭️</span>
+          </button>
+        </div>
+        <div id="round-end-client-wait" class="lobby-waiting-state" style="display: none;">
+          <div class="spinner"></div>
+          <span>بانتظار الهوست لبدء الجولة التالية...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         SCREEN 8: GAME OVER SCREEN & DARE WHEEL
+         ====================================================================== -->
+    <section id="screen-gameover" class="screen">
+      <div class="gameover-header">
+        <div style="font-size: 48px; margin-bottom: 4px;">🏆</div>
+        <h2 class="gameover-title">نهاية اللعبة!</h2>
+      </div>
+
+      <!-- Winner Highlight -->
+      <div class="winner-highlight-card" id="winner-highlight-card">
+        <div class="winner-crown">👑</div>
+        <div class="winner-name" id="winner-name">البطل</div>
+        <div class="winner-score" id="winner-score">رصيد النقاط: 0</div>
+      </div>
+
+      <!-- Leaderboard ranking -->
+      <div class="glass-card">
+        <h3 style="font-size: 16px; font-weight: 800; color: var(--gold); margin-bottom: 12px;">الترتيب النهائي 🎖️</h3>
+        <div class="scoreboard-table" id="gameover-leaderboard">
+          <!-- Leaderboard rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- The Kooz Punishment & Dare Wheel -->
+      <div class="kooz-section" id="kooz-section">
+        <div class="kooz-badge-title">
+          <span>🤡</span>
+          <span>القزّ يستاهل غرامة!</span>
+          <span>🎯</span>
+        </div>
+        <div class="kooz-name-callout" id="kooz-name-callout">فلان هو القزّ الأكبر!</div>
+
+        <!-- Wheel Canvas Container -->
+        <div class="wheel-wrap">
+          <div class="wheel-pointer"></div>
+          <canvas id="wheel-canvas" class="wheel-canvas" width="250" height="250"></canvas>
+        </div>
+
+        <button class="btn btn-coral" id="btn-spin-wheel" onclick="spinDareWheel()">
+          <span>🎲</span>
+          <span>اسحب غرامة عشوائية</span>
+        </button>
+
+        <div class="dare-result-box" id="dare-result-box" style="display: none;">
+          <div class="dare-result-label">الغرامة المطلوبة من القزّ:</div>
+          <div class="dare-result-text" id="dare-result-text">---</div>
+        </div>
+      </div>
+
+      <!-- Play Again Host Controls -->
+      <div id="gameover-host-ctrl" style="display: none; margin-bottom: 14px;">
+        <button class="btn btn-gold" id="btn-play-again" onclick="playAgain()">
+          <span>العب مرة ثانية 🔄</span>
+        </button>
+      </div>
+      <div id="gameover-client-wait" class="lobby-waiting-state" style="display: none; margin-bottom: 14px;">
+        <div class="spinner"></div>
+        <span>بانتظار الهوست لبدء لعبة جديدة...</span>
+      </div>
+
+      <button class="btn btn-glass" onclick="exitToHome()">
+        <span>العودة للرئيسية 🏠</span>
+      </button>
+    </section>
+
+  </div>
+
+  <!-- ========================================================================
+       JAVASCRIPT LOGIC
+       ======================================================================== -->
+  <script>
+    /* ==========================================================================
+       Sound Effects Synthesizer (Web Audio API - Zero External Dependencies)
+       ========================================================================== */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTap() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        } catch (e) {}
+      }
+
+      playTick() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.04);
+        } catch (e) {}
+      }
+
+      playUrgentTick() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(950, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.14, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.09);
+        } catch (e) {}
+      }
+
+      playVoteAlert() {
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.linearRampToValueAtTime(320, now + 0.25);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.28);
+        } catch (e) {}
+      }
+
+      playLaughConfirmed() {
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [350, 300, 250, 200].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            gain.gain.setValueAtTime(0.18, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.11);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.11);
+          });
+        } catch (e) {}
+      }
+
+      playFalseAlarm() {
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99].forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.15);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.15);
+          });
+        } catch (e) {}
+      }
+
+      playVictory() {
+        if (!this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+            gain.gain.setValueAtTime(0.2, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.28);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.28);
+          });
+        } catch (e) {}
+      }
+
+      playWheelTick() {
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(750, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.02);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.02);
+        } catch (e) {}
+      }
+    }
+
+    const sound = new SoundFX();
+    document.addEventListener('pointerdown', () => sound.init(), { once: true });
+
+    /* ==========================================================================
+       Dares List & Constants
+       ========================================================================== */
+    const DARES = [
+      "خلّي الجماعة يكتبون على وجهك",
+      "اتصل بشخص وغنّيله أغنية الجماعة يختارونها",
+      "اعمل 20 ضغط والجماعة يعدّون بصوت عالي",
+      "خلّي الجماعة يكتبون بوست على حساباتك",
+      "كل شيء حار وما تشرب ماء لمدة دقيقة",
+      "احكي بلهجة مضحكة لمدة 5 دقايق",
+      "خلّي الجماعة يعملوا لك مكياج",
+      "راسل كراشك برسالة الجماعة يختارونها",
+      "امشي كاووتش من طرف الغرفة للثاني",
+      "احكي بس بأسئلة لمدة 3 دقايق",
+      "ارقص لمدة دقيقة وأنت مش تسمع الموسيقى",
+      "قلّد كل شخص في الغرفة لمدة 30 ثانية"
+    ];
+
+    const AVATARS = [
+      '🦁', '🦊', '🐺', '🦅', '🐯',
+      '🦋', '🎭', '👑', '🌙', '⚡',
+      '🔥', '💎', '🎪', '🎯', '🧿'
+    ];
+
+    /* ==========================================================================
+       State Management
+       ========================================================================== */
+    const socket = io();
+    let myId = null;
+    let currentScreen = 'screen-home';
+    let setupMode = 'create'; // 'create' or 'join'
+    let selectedAvatar = '🦁';
+    let currentRoomCode = null;
+    let currentRoomState = null;
+    let isHost = false;
+    let cameraSetupDone = false;
+    let cameraStream = null;
+    let cameraAvailable = false;
+    let modelsLoaded = false;
+    let detectionTimer = null;
+    let consecutiveLostFace = 0;
+    let hasVotedCurrentVote = false;
+    let lastRenderedState = null;
+
+    /* Live expressions store for other players */
+    const playersExpressionState = {}; // playerId -> { happy, faceVisible }
+
+    /* ==========================================================================
+       Socket Event Handlers
+       ========================================================================== */
+    socket.on('connect', () => {
+      myId = socket.id;
+      console.log('Connected to socket server. My ID:', myId);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from socket server');
+      showToast('⚠️ انقطع الاتصال بالسيرفر. جاري إعادة الاتصال...', 'danger');
+    });
+
+    socket.on('room_created', ({ code }) => {
+      currentRoomCode = code;
+      showToast(`🎉 تم إنشاء الغرفة بنجاح! كود: ${code}`, 'gold');
+    });
+
+    socket.on('room_joined', ({ code }) => {
+      currentRoomCode = code;
+      showToast(`🔗 تم الانضمام للغرفة بنجاح!`, 'success');
+    });
+
+    socket.on('room_state', (state) => {
+      currentRoomState = state;
+      currentRoomCode = state.code;
+      const me = state.players.find(p => p.id === myId);
+      if (me) {
+        isHost = !!me.isHost;
+      }
+      handleRoomState(state);
+    });
+
+    socket.on('player_joined', ({ name }) => {
+      sound.playTick();
+      showToast(`👋 انضم ${name} إلى الغرفة!`, 'gold');
+    });
+
+    socket.on('player_disconnected', ({ name }) => {
+      showToast(`🚪 غادر ${name} اللعبة`, 'danger');
+    });
+
+    socket.on('host_changed', ({ newHostId, newHostName }) => {
+      isHost = (newHostId === myId);
+      if (isHost) {
+        showToast('👑 أصبحت أنت الهوست الآن!', 'gold');
+      } else {
+        showToast(`👑 ${newHostName} أصبح الهوست الآن`, 'gold');
+      }
+      if (currentRoomState) handleRoomState(currentRoomState);
+    });
+
+    socket.on('game_started', () => {
+      sound.playVictory();
+      showToast('🚀 بدأت اللعبة!', 'gold');
+      // If camera setup not yet completed, show camera screen
+      if (!cameraSetupDone) {
+        showScreen('screen-camera');
+        initCameraPreview();
+      }
+    });
+
+    socket.on('timer_tick', ({ timeLeft }) => {
+      updateRoundTimer(timeLeft);
+    });
+
+    socket.on('player_expression', ({ playerId, happy, faceVisible }) => {
+      playersExpressionState[playerId] = { happy, faceVisible };
+      updatePlayerExpressionBadge(playerId, happy, faceVisible);
+    });
+
+    socket.on('vote_tick', ({ timeLeft }) => {
+      updateVoteCountdown(timeLeft);
+    });
+
+    socket.on('laugh_confirmed', ({ targetId, targetName }) => {
+      sound.playLaughConfirmed();
+      triggerScreenShake();
+      showToast(`😂 تم تأكيد ضحك ${targetName}! (-1 نقطة)`, 'danger');
+      hideVoteOverlay();
+    });
+
+    socket.on('false_alarm', ({ targetId, targetName }) => {
+      sound.playFalseAlarm();
+      showToast(`🛡️ إنذار خاطئ! ${targetName} لم يضحك.`, 'success');
+      hideVoteOverlay();
+    });
+
+    socket.on('round_ended', ({ laughedThisRound, performerId, performerName }) => {
+      sound.playVictory();
+      hideVoteOverlay();
+      showScreen('screen-round-end');
+      renderRoundEndScreen(laughedThisRound, performerId, performerName);
+    });
+
+    socket.on('game_over', ({ players, koozId, koozName }) => {
+      sound.playVictory();
+      hideVoteOverlay();
+      showScreen('screen-gameover');
+      renderGameOverScreen(players, koozId, koozName);
+      startConfetti();
+    });
+
+    socket.on('lobby_reset', () => {
+      stopConfetti();
+      hideVoteOverlay();
+      showToast('🔄 تمت إعادة الغرفة للوبي لبدء لعبة جديدة!', 'gold');
+      showScreen('screen-lobby');
+    });
+
+    socket.on('error', ({ msg }) => {
+      sound.playVoteAlert();
+      showToast(`⚠️ ${msg}`, 'danger');
+    });
+
+    /* ==========================================================================
+       Room State Dispatcher
+       ========================================================================== */
+    function handleRoomState(state) {
+      lastRenderedState = state;
+
+      // Update room code displays
+      document.getElementById('lobby-room-code').textContent = state.code || '----';
+      document.getElementById('game-code-pill').textContent = `غرفة: ${state.code || '----'}`;
+
+      if (state.state === 'lobby') {
+        showScreen('screen-lobby');
+        renderLobby(state);
+      } else if (state.state === 'playing') {
+        if (!cameraSetupDone) {
+          showScreen('screen-camera');
+          initCameraPreview();
+        }
+      } else if (state.state === 'roundActive') {
+        if (!cameraSetupDone) {
+          showScreen('screen-camera');
+          initCameraPreview();
+        } else {
+          showScreen('screen-game');
+          hideVoteOverlay();
+          renderGameScreen(state);
+        }
+      } else if (state.state === 'voting') {
+        showScreen('screen-game');
+        renderGameScreen(state);
+        if (state.pendingVote) {
+          showVoteOverlay(state.pendingVote);
+        }
+      } else if (state.state === 'roundEnd') {
+        showScreen('screen-round-end');
+        renderRoundEndScreen(state.laughedThisRound, state.performerId, state.performerName);
+      } else if (state.state === 'gameOver') {
+        showScreen('screen-gameover');
+      }
+    }
+
+    /* ==========================================================================
+       Screen Navigation
+       ========================================================================== */
+    function showScreen(screenId) {
+      if (currentScreen === screenId) return;
+
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if (target) {
+        target.classList.add('active');
+        currentScreen = screenId;
+      }
+
+      // Show/hide corner PIP camera
+      const pip = document.getElementById('pip-container');
+      if (screenId === 'screen-game' && cameraAvailable) {
+        pip.style.display = 'flex';
+      } else {
+        pip.style.display = 'none';
+      }
+
+      // Stop confetti when leaving game over
+      if (screenId !== 'screen-gameover') {
+        stopConfetti();
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    /* ==========================================================================
+       Screen 1 & 2: Setup Logic
+       ========================================================================== */
+    function renderAvatarGrid() {
+      const container = document.getElementById('avatar-grid');
+      container.innerHTML = '';
+      AVATARS.forEach(emoji => {
+        const div = document.createElement('div');
+        div.className = `avatar-option ${emoji === selectedAvatar ? 'selected' : ''}`;
+        div.textContent = emoji;
+        div.onclick = () => {
+          sound.playTap();
+          selectedAvatar = emoji;
+          document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+          div.classList.add('selected');
+        };
+        container.appendChild(div);
+      });
+    }
+
+    function openSetup(mode) {
+      sound.playTap();
+      switchSetupMode(mode);
+      showScreen('screen-setup');
+    }
+
+    function switchSetupMode(mode) {
+      setupMode = mode;
+      const tabCreate = document.getElementById('tab-create');
+      const tabJoin = document.getElementById('tab-join');
+      const codeGroup = document.getElementById('group-room-code');
+      const setupTitle = document.getElementById('setup-title');
+      const submitBtn = document.getElementById('btn-setup-continue');
+
+      if (mode === 'create') {
+        tabCreate.classList.add('active');
+        tabJoin.classList.remove('active');
+        codeGroup.style.display = 'none';
+        setupTitle.textContent = 'إنشاء غرفة جديدة';
+        submitBtn.innerHTML = '<span>إنشاء ودخول 🏠</span>';
+      } else {
+        tabJoin.classList.add('active');
+        tabCreate.classList.remove('active');
+        codeGroup.style.display = 'block';
+        setupTitle.textContent = 'الانضمام لغرفة';
+        submitBtn.innerHTML = '<span>انضمام للغرفة 🚀</span>';
+      }
+    }
+
+    function submitSetup() {
+      sound.playTap();
+      const nameInput = document.getElementById('input-player-name');
+      const name = nameInput.value.trim();
+
+      if (!name) {
+        showToast('يرجى كتابة اسمك أولاً!', 'danger');
+        nameInput.focus();
+        return;
+      }
+
+      if (setupMode === 'create') {
+        socket.emit('create_room', { name, avatar: selectedAvatar });
+      } else {
+        const codeInput = document.getElementById('input-room-code');
+        const code = codeInput.value.trim().toUpperCase();
+        if (code.length !== 4) {
+          showToast('يرجى إدخال كود الغرفة المكون من 4 أحرف!', 'danger');
+          codeInput.focus();
+          return;
+        }
+        socket.emit('join_room', { code, name, avatar: selectedAvatar });
+      }
+    }
+
+    function exitToHome() {
+      sound.playTap();
+      if (confirm('هل أنت متأكد من رغبتك بالخروج؟')) {
+        location.reload();
+      }
+    }
+
+    function copyRoomCode() {
+      sound.playTap();
+      if (!currentRoomCode) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentRoomCode);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = currentRoomCode;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      showToast(`📋 تم نسخ الكود (${currentRoomCode}) للحافظة!`, 'gold');
+    }
+
+    /* ==========================================================================
+       Screen 3: Lobby Rendering
+       ========================================================================== */
+    function renderLobby(state) {
+      const list = document.getElementById('lobby-players-list');
+      const countEl = document.getElementById('lobby-player-count');
+      const hostControls = document.getElementById('lobby-host-controls');
+      const clientWaiting = document.getElementById('lobby-client-waiting');
+      const startBtn = document.getElementById('btn-start-game');
+      const hostHint = document.getElementById('lobby-host-hint');
+
+      countEl.textContent = `${state.players.length}/4 لاعبين`;
+      list.innerHTML = '';
+
+      state.players.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'player-row';
+        const isMe = p.id === myId;
+        row.innerHTML = `
+          <div class="player-row-avatar">${p.avatar}</div>
+          <div class="player-row-info">
+            <div class="player-row-name">
+              <span>${escapeHtml(p.name)}</span>
+              ${p.isHost ? '<span class="badge-chip badge-host">👑 هوست</span>' : ''}
+              ${isMe ? '<span class="badge-chip badge-me">أنت</span>' : ''}
+            </div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      if (isHost) {
+        hostControls.style.display = 'block';
+        clientWaiting.style.display = 'none';
+        if (state.players.length >= 2) {
+          startBtn.disabled = false;
+          hostHint.textContent = 'جاهزون للبدء! اضغط الزر أعلاه للانطلاق 🎮';
+          hostHint.style.color = 'var(--green)';
+        } else {
+          startBtn.disabled = true;
+          hostHint.textContent = `تحتاج لاعبين اثنين على الأقل لبدء اللعبة (حالياً: ${state.players.length})`;
+          hostHint.style.color = 'var(--text-muted)';
+        }
+      } else {
+        hostControls.style.display = 'none';
+        clientWaiting.style.display = 'flex';
+      }
+    }
+
+    function startGame() {
+      sound.playTap();
+      socket.emit('start_game');
+    }
+
+    /* ==========================================================================
+       Screen 4: Camera & Face Detection Initialization
+       ========================================================================== */
+    async function loadFaceApiModels() {
+      if (modelsLoaded) return true;
+      const modelSources = [
+        '/models',
+        'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights',
+        'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'
+      ];
+
+      for (const uri of modelSources) {
+        try {
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(uri),
+            faceapi.nets.faceExpressionNet.loadFromUri(uri)
+          ]);
+          modelsLoaded = true;
+          console.log('Face-api models loaded from:', uri);
+          return true;
+        } catch (err) {
+          console.warn('Could not load models from uri:', uri);
+        }
+      }
+      return false;
+    }
+
+    async function initCameraPreview() {
+      const video = document.getElementById('camera-preview-video');
+      const errBanner = document.getElementById('camera-error-banner');
+      const readyBtn = document.getElementById('btn-camera-ready');
+      const pillText = document.getElementById('camera-preview-pill-text');
+
+      errBanner.style.display = 'none';
+      pillText.textContent = 'جاري تشغيل الكاميرا وتحميل الذكاء الاصطناعي...';
+
+      // Load models in parallel
+      loadFaceApiModels().catch(console.error);
+
+      if (!cameraStream) {
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('متصفحك لا يدعم الكاميرا');
+          }
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: 'user',
+              width: { ideal: 320 },
+              height: { ideal: 240 }
+            },
+            audio: false
+          });
+          cameraStream = stream;
+          cameraAvailable = true;
+        } catch (err) {
+          console.warn('Camera access error:', err);
+          cameraAvailable = false;
+          errBanner.style.display = 'block';
+          readyBtn.textContent = 'متابعة بدون كاميرا ⏭️';
+          readyBtn.className = 'btn btn-glass';
+          pillText.textContent = 'الكاميرا غير متاحة';
+          return;
+        }
+      }
+
+      if (cameraAvailable && cameraStream) {
+        video.srcObject = cameraStream;
+        await video.play().catch(() => {});
+        pillText.textContent = 'الكاميرا تعمل بنجاح! 🟢';
+
+        // Connect stream also to PIP video for game screen
+        const pipVideo = document.getElementById('pip-video');
+        if (pipVideo) {
+          pipVideo.srcObject = cameraStream;
+          pipVideo.play().catch(() => {});
+        }
+      }
+
+      startDetectionLoop();
+    }
+
+    function onCameraReadyClicked() {
+      sound.playTap();
+      cameraSetupDone = true;
+
+      // If round is already active, go directly to game screen
+      if (currentRoomState && currentRoomState.state === 'roundActive') {
+        showScreen('screen-game');
+        renderGameScreen(currentRoomState);
+      } else {
+        // Show waiting toast
+        showToast('✅ أنت جاهز! بانتظار بدء الجولة الأولى...', 'gold');
+        showScreen('screen-lobby');
+      }
+    }
+
+    /* Face detection loop running every 500ms */
+    function startDetectionLoop() {
+      if (detectionTimer) clearInterval(detectionTimer);
+
+      detectionTimer = setInterval(async () => {
+        if (!modelsLoaded || !cameraAvailable || !cameraStream) return;
+
+        const isCameraScreen = (currentScreen === 'screen-camera');
+        const isGameRound = (currentScreen === 'screen-game' && currentRoomState?.state === 'roundActive');
+
+        if (!isCameraScreen && !isGameRound) return;
+
+        const video = isCameraScreen
+          ? document.getElementById('camera-preview-video')
+          : document.getElementById('pip-video');
+
+        if (!video || video.paused || video.ended || video.readyState < 2) return;
+
+        try {
+          const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
+          const detection = await faceapi.detectSingleFace(video, options).withFaceExpressions();
+
+          if (detection) {
+            consecutiveLostFace = 0;
+            const happy = detection.expressions.happy || 0;
+
+            updateLocalExpressionFeedback(happy, true, detection.detection.box, video, isCameraScreen);
+
+            if (isGameRound) {
+              socket.emit('expression_update', { happy, faceVisible: true });
+            }
+          } else {
+            consecutiveLostFace++;
+            // Grace period: allow 2 consecutive misses before declaring face lost
+            const faceVisible = (consecutiveLostFace < 2);
+
+            updateLocalExpressionFeedback(0, false, null, video, isCameraScreen);
+
+            if (isGameRound && !faceVisible) {
+              socket.emit('expression_update', { happy: 0, faceVisible: false });
+            }
+          }
+        } catch (e) {
+          // Ignore intermittent detection frame errors
+        }
+      }, 500);
+    }
+
+    function updateLocalExpressionFeedback(happy, faceVisible, box, video, isCameraScreen) {
+      const happyPercent = Math.round(happy * 100);
+
+      // 1. Camera Screen meter and overlay
+      if (isCameraScreen) {
+        const fill = document.getElementById('meter-fill');
+        const percentText = document.getElementById('meter-percent');
+        const pillText = document.getElementById('camera-preview-pill-text');
+
+        if (fill) fill.style.width = `${happyPercent}%`;
+        if (percentText) percentText.textContent = `${happyPercent}%`;
+
+        if (pillText) {
+          if (faceVisible) {
+            pillText.textContent = happy > 0.72 ? '😂 ضحكة رُصدت!' : (happy > 0.35 ? '😬 ابتسامة خفيفة' : '🟢 تم رصد الوجه');
+          } else {
+            pillText.textContent = '⚠️ وجّه الكاميرا نحو وجهك';
+          }
+        }
+      }
+
+      // 2. PIP corner camera in game screen
+      const pipFrame = document.getElementById('pip-frame');
+      const pipIcon = document.getElementById('pip-badge-icon');
+      const pipText = document.getElementById('pip-badge-text');
+      const pipPercent = document.getElementById('pip-badge-percent');
+
+      if (pipFrame && pipIcon && pipText && pipPercent) {
+        pipFrame.className = 'pip-frame';
+        if (!faceVisible) {
+          pipFrame.classList.add('is-lost');
+          pipIcon.textContent = '⚠️';
+          pipText.textContent = 'أين وجهك؟';
+          pipPercent.textContent = '';
+        } else if (happy > 0.72) {
+          pipFrame.classList.add('is-laughing');
+          pipIcon.textContent = '😂';
+          pipText.textContent = 'تضحك!';
+          pipPercent.textContent = `${happyPercent}%`;
+        } else if (happy > 0.35) {
+          pipFrame.classList.add('is-smiling');
+          pipIcon.textContent = '😬';
+          pipText.textContent = 'تبتسم';
+          pipPercent.textContent = `${happyPercent}%`;
+        } else {
+          pipIcon.textContent = '🟢';
+          pipText.textContent = 'صامد';
+          pipPercent.textContent = `${happyPercent}%`;
+        }
+      }
+    }
+
+    /* ==========================================================================
+       Screen 5: Game Screen Rendering
+       ========================================================================== */
+    function renderGameScreen(state) {
+      // 1. Top bar: round pill
+      const roundPill = document.getElementById('game-round-pill');
+      roundPill.textContent = `الجولة ${state.round} من ${state.totalRounds || state.players.length}`;
+
+      // 2. Performer banner
+      const banner = document.getElementById('performer-banner');
+      const bannerTitle = document.getElementById('performer-banner-title');
+      const bannerSubtext = document.getElementById('performer-banner-subtext');
+      const isMePerformer = (state.performerId === myId);
+
+      if (isMePerformer) {
+        banner.className = 'performer-banner is-me';
+        bannerTitle.innerHTML = '<span class="gold-text">🎭 دورك! اضحّك الباقين! 🎭</span>';
+        bannerSubtext.textContent = 'أنت المؤدي في هذه الجولة — استخدم التحدي أدناه وحاول تخليهم يفرطوا ضحك!';
+      } else {
+        banner.className = 'performer-banner is-other';
+        bannerTitle.innerHTML = `<span>🎭</span> <span>${escapeHtml(state.performerName || 'المؤدي')} هو المؤدي الآن</span>`;
+        bannerSubtext.textContent = 'حاول تمسك نفسك وما تضحك! لو ضحكت بتخسر نقطة 😬';
+      }
+
+      // 3. Challenge card
+      document.getElementById('challenge-card-text').textContent = state.challengeCard || 'تحدي كوميدي قادم...';
+
+      // 4. Players grid
+      const grid = document.getElementById('players-game-grid');
+      grid.innerHTML = '';
+
+      state.players.forEach(p => {
+        const isPerformer = (p.id === state.performerId);
+        const isMe = (p.id === myId);
+        const hasLaughed = state.laughedThisRound && state.laughedThisRound.includes(p.id);
+        const expr = playersExpressionState[p.id] || { happy: 0, faceVisible: true };
+
+        const card = document.createElement('div');
+        card.id = `player-card-${p.id}`;
+        card.className = `player-game-card ${isPerformer ? 'is-performer' : ''} ${hasLaughed ? 'has-laughed' : ''}`;
+
+        // Status badge
+        let statusBadge = '<span class="status-indicator-pill status-safe">🟢 صامد</span>';
+        if (hasLaughed) {
+          statusBadge = '<span class="status-indicator-pill status-lost">✅ ضحك وخسر</span>';
+        } else if (isPerformer) {
+          statusBadge = '<span class="status-indicator-pill" style="background: rgba(255,215,0,0.2); color: var(--gold);">🎭 المؤدي</span>';
+        } else if (!expr.faceVisible) {
+          statusBadge = '<span class="status-indicator-pill" style="background: rgba(249,115,22,0.2); color: #f97316;">⚠️ وجه مغطى</span>';
+        } else if (expr.happy > 0.72) {
+          statusBadge = '<span class="status-indicator-pill status-laughing">😂 يضحك!</span>';
+        } else if (expr.happy > 0.35) {
+          statusBadge = '<span class="status-indicator-pill status-smiling">😬 يبتسم</span>';
+        }
+
+        // Flag button
+        let flagBtn = '';
+        // Only show flag button if:
+        // 1. I am NOT performer
+        // 2. Target is NOT myself
+        // 3. Target is NOT performer
+        // 4. Target has NOT already laughed this round
+        if (!isMePerformer && !isMe && !isPerformer && !hasLaughed) {
+          flagBtn = `
+            <button class="btn btn-coral btn-flag-laugh" onclick="flagPlayer('${p.id}')">
+              <span>🚨</span>
+              <span>بلّغ!</span>
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="player-game-avatar">${p.avatar}</div>
+          <div class="player-game-name">${escapeHtml(p.name)} ${isMe ? '(أنت)' : ''}</div>
+          <div class="player-game-score num-font">⭐ ${p.score}</div>
+          <div id="player-status-wrap-${p.id}">${statusBadge}</div>
+          ${flagBtn}
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function updateRoundTimer(timeLeft) {
+      const secondsEl = document.getElementById('timer-seconds');
+      const progressEl = document.getElementById('timer-progress');
+      if (!secondsEl || !progressEl) return;
+
+      secondsEl.textContent = timeLeft;
+
+      const duration = currentRoomState?.roundDuration || 30;
+      const progress = Math.max(0, Math.min(1, timeLeft / duration));
+      const circumference = 283; // 2 * PI * 45
+      const offset = circumference * (1 - progress);
+      progressEl.style.strokeDashoffset = offset;
+
+      if (timeLeft <= 10) {
+        secondsEl.classList.add('urgent');
+        progressEl.classList.add('urgent');
+        sound.playUrgentTick();
+      } else {
+        secondsEl.classList.remove('urgent');
+        progressEl.classList.remove('urgent');
+        sound.playTick();
+      }
+    }
+
+    function updatePlayerExpressionBadge(playerId, happy, faceVisible) {
+      const card = document.getElementById(`player-card-${playerId}`);
+      const wrap = document.getElementById(`player-status-wrap-${playerId}`);
+      if (!card || !wrap) return;
+
+      // Don't override if already laughed or performer
+      if (currentRoomState?.laughedThisRound?.includes(playerId)) return;
+      if (currentRoomState?.performerId === playerId) return;
+
+      card.classList.remove('is-smiling', 'is-laughing');
+
+      if (!faceVisible) {
+        wrap.innerHTML = '<span class="status-indicator-pill" style="background: rgba(249,115,22,0.2); color: #f97316;">⚠️ وجه مغطى</span>';
+      } else if (happy > 0.72) {
+        card.classList.add('is-laughing');
+        wrap.innerHTML = '<span class="status-indicator-pill status-laughing">😂 يضحك!</span>';
+      } else if (happy > 0.35) {
+        card.classList.add('is-smiling');
+        wrap.innerHTML = '<span class="status-indicator-pill status-smiling">😬 يبتسم</span>';
+      } else {
+        wrap.innerHTML = '<span class="status-indicator-pill status-safe">🟢 صامد</span>';
+      }
+    }
+
+    function flagPlayer(targetId) {
+      sound.playTap();
+      socket.emit('flag_laugh', { targetId });
+      showToast('🚨 تم إرسال البلاغ للتصويت!', 'gold');
+    }
+
+    /* ==========================================================================
+       Screen 6: Vote Overlay Logic
+       ========================================================================== */
+    function showVoteOverlay(pendingVote) {
+      sound.playVoteAlert();
+      hasVotedCurrentVote = false;
+
+      const overlay = document.getElementById('overlay-vote');
+      const targetName = document.getElementById('vote-target-name');
+      const reasonText = document.getElementById('vote-reason-text');
+      const buttonsRow = document.getElementById('vote-buttons-row');
+      const accusedMsg = document.getElementById('vote-accused-msg');
+      const votedMsg = document.getElementById('vote-voted-msg');
+
+      targetName.textContent = pendingVote.targetName || 'أحد اللاعبين';
+      reasonText.textContent = pendingVote.reason || 'اشتباه بالضحك أو إخفاء الوجه!';
+
+      const isTargetMe = (pendingVote.targetId === myId);
+
+      if (isTargetMe) {
+        buttonsRow.style.display = 'none';
+        accusedMsg.style.display = 'block';
+        votedMsg.style.display = 'none';
+      } else {
+        buttonsRow.style.display = 'flex';
+        accusedMsg.style.display = 'none';
+        votedMsg.style.display = 'none';
+        document.getElementById('btn-vote-confirm').disabled = false;
+        document.getElementById('btn-vote-dismiss').disabled = false;
+      }
+
+      updateVoteCountdown(pendingVote.timeLeft || 5);
+      overlay.style.display = 'flex';
+    }
+
+    function hideVoteOverlay() {
+      const overlay = document.getElementById('overlay-vote');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    function updateVoteCountdown(timeLeft) {
+      const fill = document.getElementById('vote-timer-bar-fill');
+      const text = document.getElementById('vote-timer-text');
+      if (fill) fill.style.width = `${Math.max(0, (timeLeft / 5) * 100)}%`;
+      if (text) text.textContent = `متبقي: ${timeLeft} ثوانٍ`;
+    }
+
+    function castVote(confirm) {
+      sound.playTap();
+      if (hasVotedCurrentVote) return;
+      hasVotedCurrentVote = true;
+
+      socket.emit('cast_vote', { confirm });
+
+      document.getElementById('btn-vote-confirm').disabled = true;
+      document.getElementById('btn-vote-dismiss').disabled = true;
+      document.getElementById('vote-buttons-row').style.display = 'none';
+      document.getElementById('vote-voted-msg').style.display = 'block';
+    }
+
+    function triggerScreenShake() {
+      document.body.classList.add('shake', 'flash-red-effect');
+      setTimeout(() => {
+        document.body.classList.remove('shake', 'flash-red-effect');
+      }, 700);
+    }
+
+    /* ==========================================================================
+       Screen 7: Round End Rendering
+       ========================================================================== */
+    function renderRoundEndScreen(laughedThisRound, performerId, performerName) {
+      const summaryText = document.getElementById('round-end-summary-text');
+      const performerTitle = document.getElementById('recap-performer-title');
+      const laughersList = document.getElementById('recap-laughers-list');
+      const scoreboard = document.getElementById('round-end-scoreboard');
+      const hostCtrl = document.getElementById('round-end-host-ctrl');
+      const clientWait = document.getElementById('round-end-client-wait');
+
+      summaryText.textContent = `الجولة ${currentRoomState?.round || 1} من ${currentRoomState?.totalRounds || currentRoomState?.players?.length || 4}`;
+
+      const laughCount = (laughedThisRound || []).length;
+      performerTitle.innerHTML = `المؤدي <b>${escapeHtml(performerName || 'المؤدي')}</b> حصد <span class="performer-gain">+${laughCount} نقطة</span>!`;
+
+      laughersList.innerHTML = '';
+      if (!laughedThisRound || laughedThisRound.length === 0) {
+        laughersList.innerHTML = `
+          <div style="font-size: 15px; color: var(--green); padding: 8px;">
+            🛡️ صمود بطولي! لم يضحك أحد في هذه الجولة.
+          </div>
+        `;
+      } else {
+        laughedThisRound.forEach(pid => {
+          const player = currentRoomState?.players?.find(p => p.id === pid);
+          if (player) {
+            const div = document.createElement('div');
+            div.className = 'laugher-chip';
+            div.innerHTML = `
+              <span>😂 ${player.avatar} ${escapeHtml(player.name)}</span>
+              <span class="laugher-penalty">-1 نقطة</span>
+            `;
+            laughersList.appendChild(div);
+          }
+        });
+      }
+
+      // Scoreboard sorted high to low
+      scoreboard.innerHTML = '';
+      const sortedPlayers = [...(currentRoomState?.players || [])].sort((a, b) => b.score - a.score);
+      sortedPlayers.forEach((p, idx) => {
+        const row = document.createElement('div');
+        row.className = 'score-row';
+        row.innerHTML = `
+          <div class="score-row-info">
+            <span style="font-weight: 800; color: var(--gold);">${idx + 1}.</span>
+            <span style="font-size: 24px;">${p.avatar}</span>
+            <span style="font-weight: 700;">${escapeHtml(p.name)} ${p.id === myId ? '(أنت)' : ''}</span>
+          </div>
+          <div class="score-row-points">${p.score} نقطة</div>
+        `;
+        scoreboard.appendChild(row);
+      });
+
+      if (isHost) {
+        hostCtrl.style.display = 'block';
+        clientWait.style.display = 'none';
+      } else {
+        hostCtrl.style.display = 'none';
+        clientWait.style.display = 'flex';
+      }
+    }
+
+    function advanceNextRound() {
+      sound.playTap();
+      socket.emit('next_round');
+    }
+
+    /* ==========================================================================
+       Screen 8: Game Over & Dare Wheel
+       ========================================================================== */
+    let currentWheelAngle = 0;
+    let isSpinningWheel = false;
+
+    function renderGameOverScreen(players, koozId, koozName) {
+      const sorted = [...(players || currentRoomState?.players || [])].sort((a, b) => b.score - a.score);
+      const winner = sorted[0];
+      const kooz = currentRoomState?.players?.find(p => p.id === koozId) || sorted[sorted.length - 1];
+
+      // Winner highlight
+      if (winner) {
+        document.getElementById('winner-name').textContent = `${winner.avatar} ${winner.name}`;
+        document.getElementById('winner-score').textContent = `الرصيد: ${winner.score} نقطة`;
+      }
+
+      // Kooz name
+      if (kooz) {
+        document.getElementById('kooz-name-callout').textContent = `${kooz.avatar} ${kooz.name} هو القزّ الأكبر لهذا اليوم!`;
+      }
+
+      // Leaderboard
+      const board = document.getElementById('gameover-leaderboard');
+      board.innerHTML = '';
+      sorted.forEach((p, idx) => {
+        const isKooz = (p.id === (kooz?.id || koozId));
+        const isWinner = (idx === 0);
+        const row = document.createElement('div');
+        row.className = 'score-row';
+        row.innerHTML = `
+          <div class="score-row-info">
+            <span style="font-size: 20px;">${isWinner ? '👑' : (isKooz ? '🤡' : `${idx + 1}.`)}</span>
+            <span style="font-size: 24px;">${p.avatar}</span>
+            <span style="font-weight: 700;">${escapeHtml(p.name)} ${p.id === myId ? '(أنت)' : ''}</span>
+          </div>
+          <div class="score-row-points">${p.score} نقطة</div>
+        `;
+        board.appendChild(row);
+      });
+
+      // Host controls
+      const hostCtrl = document.getElementById('gameover-host-ctrl');
+      const clientWait = document.getElementById('gameover-client-wait');
+      if (isHost) {
+        hostCtrl.style.display = 'block';
+        clientWait.style.display = 'none';
+      } else {
+        hostCtrl.style.display = 'none';
+        clientWait.style.display = 'flex';
+      }
+
+      drawDareWheel(0);
+    }
+
+    function drawDareWheel(angleOffset) {
+      const canvas = document.getElementById('wheel-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = centerX - 6;
+      const numSectors = DARES.length;
+      const sliceAngle = (2 * Math.PI) / numSectors;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const colors = [
+        '#FF6B6B', '#9d4edd', '#FFD700', '#4ade80',
+        '#3a86ff', '#fb5607', '#8338ec', '#ff006e',
+        '#06d6a0', '#118ab2', '#e76f51', '#f4a261'
+      ];
+
+      for (let i = 0; i < numSectors; i++) {
+        const start = angleOffset + i * sliceAngle;
+        const end = start + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, start, end);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+
+        // Sector label
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate(start + sliceAngle / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Poppins, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${i + 1}`, radius - 16, 5);
+        ctx.restore();
+      }
+
+      // Center gold hub
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 24, 0, 2 * Math.PI);
+      ctx.fillStyle = '#FFD700';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#121024';
+      ctx.stroke();
+
+      ctx.fillStyle = '#121024';
+      ctx.font = '16px Tajawal';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🎯', centerX, centerY);
+    }
+
+    function spinDareWheel() {
+      if (isSpinningWheel) return;
+      sound.playTap();
+      isSpinningWheel = true;
+
+      const spinBtn = document.getElementById('btn-spin-wheel');
+      spinBtn.disabled = true;
+
+      const resultBox = document.getElementById('dare-result-box');
+      resultBox.style.display = 'none';
+
+      const targetIdx = Math.floor(Math.random() * DARES.length);
+      const numSectors = DARES.length;
+      const sliceAngle = (2 * Math.PI) / numSectors;
+
+      // Calculate destination angle to align pointer (top, -PI/2) with targetIdx
+      const fullSpins = 6;
+      const targetSliceCenter = targetIdx * sliceAngle + sliceAngle / 2;
+      const finalAngle = (fullSpins * 2 * Math.PI) + (Math.PI * 1.5 - targetSliceCenter);
+
+      const startAngle = currentWheelAngle;
+      const totalDelta = finalAngle - (startAngle % (2 * Math.PI));
+      const duration = 3800; // ms
+      const startTime = performance.now();
+      let lastTickSector = -1;
+
+      function animateSpin(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        // Ease out cubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        currentWheelAngle = startAngle + totalDelta * ease;
+
+        drawDareWheel(currentWheelAngle);
+
+        // Sound tick on sector boundaries
+        const currentSector = Math.floor((currentWheelAngle % (2 * Math.PI)) / sliceAngle);
+        if (currentSector !== lastTickSector) {
+          sound.playWheelTick();
+          lastTickSector = currentSector;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animateSpin);
+        } else {
+          isSpinningWheel = false;
+          spinBtn.disabled = false;
+          sound.playVictory();
+
+          const chosenDare = DARES[targetIdx];
+          document.getElementById('dare-result-text').textContent = chosenDare;
+          resultBox.style.display = 'block';
+          showToast(`🎯 الغرامة المختارة: ${chosenDare}`, 'gold');
+        }
+      }
+
+      requestAnimationFrame(animateSpin);
+    }
+
+    function playAgain() {
+      sound.playTap();
+      socket.emit('play_again');
+    }
+
+    /* ==========================================================================
+       Canvas Confetti Animation Engine
+       ========================================================================== */
+    let confettiAnimationId = null;
+    let confettiParticles = [];
+
+    function startConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#FFD700', '#FF6B6B', '#9d4edd', '#ffffff', '#4ade80', '#38bdf8'];
+      confettiParticles = [];
+
+      for (let i = 0; i < 120; i++) {
+        confettiParticles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * -canvas.height,
+          vx: (Math.random() - 0.5) * 4,
+          vy: Math.random() * 4 + 3,
+          size: Math.random() * 8 + 5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 8
+        });
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confettiParticles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rotation += p.vRot;
+
+          if (p.y > canvas.height) {
+            p.y = -10;
+            p.x = Math.random() * canvas.width;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+          ctx.restore();
+        });
+
+        confettiAnimationId = requestAnimationFrame(loop);
+      }
+
+      if (confettiAnimationId) cancelAnimationFrame(confettiAnimationId);
+      confettiAnimationId = requestAnimationFrame(loop);
+    }
+
+    function stopConfetti() {
+      if (confettiAnimationId) {
+        cancelAnimationFrame(confettiAnimationId);
+        confettiAnimationId = null;
+      }
+      const canvas = document.getElementById('confetti-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    /* ==========================================================================
+       Background Stars Generator
+       ========================================================================== */
+    function initBackgroundStars() {
+      const container = document.getElementById('stars-bg');
+      if (!container) return;
+      container.innerHTML = '';
+      const starSymbols = ['✦', '✧', '★'];
+
+      for (let i = 0; i < 24; i++) {
+        const star = document.createElement('span');
+        star.className = 'star-elem';
+        star.textContent = starSymbols[i % starSymbols.length];
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.fontSize = `${Math.floor(Math.random() * 12) + 10}px`;
+        star.style.animationDelay = `${(Math.random() * 4).toFixed(1)}s`;
+        container.appendChild(star);
+      }
+    }
+
+    /* ==========================================================================
+       Toast Helper
+       ========================================================================== */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-15px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3400);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, m => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[m]);
+    }
+
+    /* ==========================================================================
+       Window Resize Handler & App Init
+       ========================================================================== */
+    window.addEventListener('resize', () => {
+      const canvas = document.getElementById('confetti-canvas');
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+    });
+
+    // Auto-uppercase room code input
+    document.addEventListener('DOMContentLoaded', () => {
+      initBackgroundStars();
+      renderAvatarGrid();
+
+      const codeInput = document.getElementById('input-room-code');
+      if (codeInput) {
+        codeInput.addEventListener('input', (e) => {
+          e.target.value = e.target.value.toUpperCase();
+        });
+      }
+
+      // Start pre-loading face-api models in background for zero delay
+      loadFaceApiModels().catch(console.warn);
+    });
+  </script>
+</body>
+</html>
