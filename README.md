@@ -1,3 +1,3 @@
-# Meen El Kooz — مين الكوز 🎭
+# Meen El Kooz — من القزّ 🎭
 
-Multiplayer Arabic party laugh-detection game. Each player joins from their own phone with the camera opened.
+Multiplayer Arabic party laugh-detection game. Each player joins from their own phone.

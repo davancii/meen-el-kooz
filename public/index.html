@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0f0c29">
-  <title>Meen El Kooz - من القزّ 🎭</title>
+  <title>مين الكوز 🎭</title>
 
   <!-- Google Fonts: Tajawal (Arabic) + Poppins (Numbers & English) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -849,6 +849,40 @@
       letter-spacing: 1px;
     }
 
+    .challenge-card-type-label {
+      display: inline-block;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 4px 14px;
+      border-radius: var(--radius-full);
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .challenge-card-type-label.type-joke {
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid rgba(255, 215, 0, 0.5);
+      color: var(--gold);
+    }
+
+    .challenge-card-type-label.type-story {
+      background: rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: var(--blue);
+    }
+
+    .challenge-card-type-label.type-act {
+      background: rgba(157, 78, 221, 0.25);
+      border: 1px solid rgba(157, 78, 221, 0.5);
+      color: #d8b4fe;
+    }
+
+    .challenge-card-type-label.type-challenge {
+      background: rgba(255, 107, 107, 0.2);
+      border: 1px solid rgba(255, 107, 107, 0.5);
+      color: var(--coral);
+    }
+
     .challenge-card-text {
       font-size: 18px;
       font-weight: 800;
@@ -1486,13 +1520,13 @@
         <h1 class="home-title">Meen El Kooz</h1>
         <div class="home-subtitle">
           <span class="stars-dec">✦</span>
-          <span>من القزّ؟</span>
+          <span>مين الكوز؟</span>
           <span class="stars-dec">★</span>
         </div>
       </div>
 
       <div class="rules-card">
-        <p>من يضحك يخسر نقطة! 📉<br>من يضحّك يكسب نقطة! 📈<br>والأخسر في النهاية هو... القزّ! 🤡</p>
+        <p>من يضحك يخسر نقطة! 📉<br>من يضحّك يكسب نقطة! 📈<br>والأخسر في النهاية هو... الكوز! 🤡</p>
       </div>
 
       <div class="home-actions">
@@ -1511,7 +1545,7 @@
         <div class="how-it-works-list">
           <div class="how-it-works-item">
             <span class="item-icon">📱</span>
-            <span>كل لاعب يفتح اللعبة على جواله الخاص في نفس الغرفة.</span>
+            <span>كل لاعب يفتح اللعبة على جواله من أي مكان في العالم! 🌍</span>
           </div>
           <div class="how-it-works-item">
             <span class="item-icon">🎭</span>
@@ -1588,18 +1622,24 @@
       <div class="room-code-box">
         <div class="room-code-label">كود الغرفة</div>
         <div class="room-code-digits" id="lobby-room-code">----</div>
-        <div class="room-code-share-hint">شارك هذا الكود مع أصحابك في نفس الغرفة!</div>
-        <button class="btn btn-sm btn-glass" onclick="copyRoomCode()">
-          <span>📋</span>
-          <span>نسخ الكود</span>
-        </button>
+        <div class="room-code-share-hint">شارك هذا الكود أو الرابط مع أصحابك — يقدروا يلعبوا من أي مكان! 🌍</div>
+        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+          <button class="btn btn-sm btn-glass" onclick="copyRoomCode()">
+            <span>📋</span>
+            <span>نسخ الكود</span>
+          </button>
+          <button class="btn btn-sm btn-gold" onclick="shareRoomLink()">
+            <span>🔗</span>
+            <span>مشاركة الرابط</span>
+          </button>
+        </div>
       </div>
 
       <!-- Players List -->
       <div class="glass-card">
         <div class="lobby-players-header">
           <span class="lobby-players-title">اللاعبون المتصلون</span>
-          <span class="lobby-players-count" id="lobby-player-count">0/4 لاعبين</span>
+          <span class="lobby-players-count" id="lobby-player-count">0/8 لاعبين</span>
         </div>
 
         <div class="players-list" id="lobby-players-list">
@@ -1690,6 +1730,7 @@
       <!-- Challenge Card -->
       <div class="challenge-card">
         <div class="challenge-card-header">تحدي الجولة الحالية 📜</div>
+        <div id="challenge-card-type" class="challenge-card-type-label type-challenge" style="display: none;"></div>
         <div class="challenge-card-text" id="challenge-card-text">جاري تحميل التحدي...</div>
       </div>
 
@@ -1832,10 +1873,10 @@
       <div class="kooz-section" id="kooz-section">
         <div class="kooz-badge-title">
           <span>🤡</span>
-          <span>القزّ يستاهل غرامة!</span>
+          <span>الكوز يستاهل غرامة!</span>
           <span>🎯</span>
         </div>
-        <div class="kooz-name-callout" id="kooz-name-callout">فلان هو القزّ الأكبر!</div>
+        <div class="kooz-name-callout" id="kooz-name-callout">فلان هو الكوز الأكبر!</div>
 
         <!-- Wheel Canvas Container -->
         <div class="wheel-wrap">
@@ -1849,7 +1890,7 @@
         </button>
 
         <div class="dare-result-box" id="dare-result-box" style="display: none;">
-          <div class="dare-result-label">الغرامة المطلوبة من القزّ:</div>
+          <div class="dare-result-label">الغرامة المطلوبة من الكوز:</div>
           <div class="dare-result-text" id="dare-result-text">---</div>
         </div>
       </div>
@@ -2045,18 +2086,20 @@
        Dares List & Constants
        ========================================================================== */
     const DARES = [
-      "خلّي الجماعة يكتبون على وجهك",
-      "اتصل بشخص وغنّيله أغنية الجماعة يختارونها",
-      "اعمل 20 ضغط والجماعة يعدّون بصوت عالي",
-      "خلّي الجماعة يكتبون بوست على حساباتك",
-      "كل شيء حار وما تشرب ماء لمدة دقيقة",
-      "احكي بلهجة مضحكة لمدة 5 دقايق",
-      "خلّي الجماعة يعملوا لك مكياج",
-      "راسل كراشك برسالة الجماعة يختارونها",
-      "امشي كاووتش من طرف الغرفة للثاني",
-      "احكي بس بأسئلة لمدة 3 دقايق",
-      "ارقص لمدة دقيقة وأنت مش تسمع الموسيقى",
-      "قلّد كل شخص في الغرفة لمدة 30 ثانية"
+      "خلّي الجماعة يكتبوا على وجهك بالقلم",
+      "اتصل بحد مش في الأوضة وغنّيله أغنية الجماعة بيختاروها",
+      "اعمل ٢٠ ضغطة والجماعة بتعد بصوت عالي",
+      "خلّي الجماعة يكتبوا بوست على حساباتك",
+      "كل حاجة حارة ومتشربش مية لمدة دقيقة",
+      "اتكلم بلهجة مضحكة لمدة ٥ دقايق وأي حد يضحك يعاقبه معاك",
+      "خلّي الجماعة يعملوا لك مكياج بالأوراق والأقلام اللي معاهم",
+      "ابعت رسالة لحد الجماعة بيختاروه والجماعة بيكتبوا الكلام",
+      "امشي كاووتش من طرف الأوضة للتاني ٣ مرات",
+      "اتكلم بس بأسئلة لمدة ٣ دقايق متتكلمش غيرها",
+      "ارقص لمدة دقيقة وأنت مش سامع الموسيقى",
+      "قلّد كل شخص في الأوضة لمدة ٣٠ ثانية",
+      "احكي سر محرج عن نفسك والجماعة بيقرروا لو يصدقوا ولا لأ",
+      "اعمل ١٠ قرفصاوات وأنت بتغني أغنية الجماعة بتختارها"
     ];
 
     const AVATARS = [
@@ -2370,6 +2413,37 @@
       showToast(`📋 تم نسخ الكود (${currentRoomCode}) للحافظة!`, 'gold');
     }
 
+    function shareRoomLink() {
+      sound.playTap();
+      if (!currentRoomCode) return;
+      const shareUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoomCode}`;
+      if (navigator.share) {
+        navigator.share({
+          title: 'مين الكوز 🎭',
+          text: `انضم إلى لعبتي في مين الكوز! كود الغرفة: ${currentRoomCode}`,
+          url: shareUrl
+        }).catch(() => {
+          copyToClipboard(shareUrl, `🔗 تم نسخ رابط الغرفة للحافظة!`);
+        });
+      } else {
+        copyToClipboard(shareUrl, `🔗 تم نسخ رابط الغرفة للحافظة!`);
+      }
+    }
+
+    function copyToClipboard(text, successMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = text;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      showToast(successMsg, 'gold');
+    }
+
     /* ==========================================================================
        Screen 3: Lobby Rendering
        ========================================================================== */
@@ -2381,7 +2455,7 @@
       const startBtn = document.getElementById('btn-start-game');
       const hostHint = document.getElementById('lobby-host-hint');
 
-      countEl.textContent = `${state.players.length}/4 لاعبين`;
+      countEl.textContent = `${state.players.length}/8 لاعبين`;
       list.innerHTML = '';
 
       state.players.forEach(p => {
@@ -2645,7 +2719,34 @@
       }
 
       // 3. Challenge card
-      document.getElementById('challenge-card-text').textContent = state.challengeCard || 'تحدي كوميدي قادم...';
+      const cardTypeEl = document.getElementById('challenge-card-type');
+      const cardTextEl = document.getElementById('challenge-card-text');
+
+      const cardData = state.challengeCard;
+      if (cardData && typeof cardData === 'object') {
+        cardTextEl.textContent = cardData.text || '';
+        if (cardTypeEl) {
+          const typeNames = {
+            joke: '😄 نكتة قولها',
+            story: '📖 احكي موقف',
+            act: '🎭 مثّل',
+            challenge: '⚡ تحدي'
+          };
+          const typeClasses = {
+            joke: 'type-joke',
+            story: 'type-story',
+            act: 'type-act',
+            challenge: 'type-challenge'
+          };
+          const cardType = cardData.type || 'challenge';
+          cardTypeEl.textContent = typeNames[cardType] || '📜 تحدي';
+          cardTypeEl.className = `challenge-card-type-label ${typeClasses[cardType] || 'type-challenge'}`;
+          cardTypeEl.style.display = 'inline-block';
+        }
+      } else {
+        cardTextEl.textContent = cardData || 'تحدي كوميدي قادم...';
+        if (cardTypeEl) cardTypeEl.style.display = 'none';
+      }
 
       // 4. Players grid
       const grid = document.getElementById('players-game-grid');
@@ -2911,7 +3012,7 @@
 
       // Kooz name
       if (kooz) {
-        document.getElementById('kooz-name-callout').textContent = `${kooz.avatar} ${kooz.name} هو القزّ الأكبر لهذا اليوم!`;
+        document.getElementById('kooz-name-callout').textContent = `${kooz.avatar} ${kooz.name} هو الكوز الأكبر لهذا اليوم!`;
       }
 
       // Leaderboard
@@ -3209,6 +3310,22 @@
         codeInput.addEventListener('input', (e) => {
           e.target.value = e.target.value.toUpperCase();
         });
+      }
+
+      // Check URL query parameters for ?room=CODE
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomParam = urlParams.get('room');
+      if (roomParam) {
+        const cleanRoom = roomParam.trim().toUpperCase().substring(0, 4);
+        if (cleanRoom) {
+          openSetup('join');
+          if (codeInput) {
+            codeInput.value = cleanRoom;
+          }
+          const nameInput = document.getElementById('input-player-name');
+          if (nameInput) nameInput.focus();
+          showToast(`تم اكتشاف كود الغرفة: ${cleanRoom} ✨`, 'gold');
+        }
       }
 
       // Start pre-loading face-api models in background for zero delay
